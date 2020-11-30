@@ -1,0 +1,13 @@
+#File or tool path settings
+#name	path
+hg19	/data/bioit/biodata/xuxy/pipeline/wgs/db/hg19.fa
+dict	/data/bioit/biodata/xuxy/pipeline/wgs/db/hg19.dict
+dbsnp	/data/bioit/biodata/xuxy/pipeline/wgs/db/dbsnp_138.hg19.vcf.gz
+mills	/data/bioit/biodata/xuxy/pipeline/wgs/db/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
+tindels	/data/bioit/biodata/xuxy/db/gatk/1000G_phase1.indels.hg19.sites.vcf
+bcl2fastq	/usr/local/bin/bcl2fastq
+fastqc	/data/bioit/biodata/xuxy/pipeline/wgs/soft/FastQC/fastqc
+fastp	/data/bioit/biodata/xuxy/pipeline/wgs/soft/fastp-master/fastp
+bwa	/data/bioit/biodata/xuxy/pipeline/nipt/soft/bwa-0.7.17/bwa
+samtools	/data/bioit/biodata/xuxy/pipeline/wgs/soft/samtools-1.10-install/bin/samtools
+gatk3	/data/bioit/biodata/xuxy/pipeline/wgs/soft/gatk-4.1.8.0/gatk
