@@ -28,6 +28,7 @@ my $project = strftime("%Y%m%d-%H%M%S",localtime());
 my $workDir = $ENV{'PWD'};
 my $prefix = "";
 my $sample_match_filter = "";
+my $platform = "ILLUMINA";
 my $ref = $config->{'hg19'};
 my $step = 'cfb';
 my $thread = '35';
@@ -66,6 +67,7 @@ $indent --project <str>               Project name, default "$project"
 $indent --workDir <str>               Work directory, default "$workDir"
 $indent --prefix <str>                Prefix for this run, default "$prefix"
 $indent --smf <str>                   Sample id match this string will be filtered, default "$sample_match_filter"
+$indent --platform <str>              Platform/technology used to produce the read, such as ILLUMINA, SOLID, IONTORRENT, HELICOS and PACBIO, default "$platform"
 $indent --ref <str>                   Reference genome absolute path, default "$ref"
 $indent --step <str>                  Set step for run, default "$step"
 $indent --run <str>                   whether run pipeline, yes or no, default "$run"
@@ -105,6 +107,7 @@ GetOptions(
 	"workDir=s" => \$workDir,
 	"prefix=s" => \$prefix,
 	"smf=s" => \$sample_match_filter,
+	"platform" => \$platform,
 	"ref=s" => \$ref,
 	"step=s" => \$step,
 	"thread=i" => \$thread,
@@ -171,7 +174,7 @@ if ($input eq "fq.lst" ) {
 	system("mkdir -p $projectDir/fastq") == 0 || die $!;
 	my $bcl2fastq_shell=<<BCL;
 # convert bcl to fastq
-$config->{'bcl2fastq'} -R $input -o $projectDir/tmp -r $thread -d $thread -p $thread -w $thread --no-lane-splitting
+$config->{'bcl2fastq'} -R $input -o $projectDir/tmp -r $thread -p $thread -w $thread --no-lane-splitting
 rm $projectDir/tmp/Undetermined*
 mv $projectDir/tmp/*gz $projectDir/tmp/*/*gz $projectDir/fastq
 rm -rf $projectDir/tmp
@@ -241,7 +244,7 @@ FILTER
 		#@{$sampleInfo{$sampleId}{'clean'}} = ($fastq->[0], $fastq->[1]) unless ($sampleInfo{$sampleId}{'clean'});
 		my $align_program = $config->{'bwa'};
 		reads_align($align_program, $config->{'samtools'}, $config->{'gatk3'}, $thread, $sampleId, $sampleInfo{$sampleId}{'clean'},
-                    $ref, $config->{'dbsnp'}, $config->{'mills'}, $config->{'tindels'}, $align_way, $align_arg, $alignDir, $rm);
+                    $ref, $platform, $config->{'dbsnp'}, $config->{'mills'}, $config->{'tindels'}, $align_way, $align_arg, $alignDir, $rm);
 		#$sample_shell{$sampleId} .= "sh $alignDir/$sampleId.align.sh >$alignDir/$sampleId.align.sh.o 2>$alignDir/$sampleId.align.sh.e\n";
 		$batch_align_shell .= "sh $alignDir/$sampleId.align.sh >$alignDir/$sampleId.align.sh.o 2>$alignDir/$sampleId.align.sh.e\n";
 		$sampleInfo{$sampleId}{'align'} = "$alignDir/$sampleId.final.bam"; 
@@ -250,6 +253,7 @@ FILTER
 parallel_shell($batch_fastq_shell, "$projectDir/fastq.deal.sh", $thread, 3) if ($step =~ /c/ or $step =~ /f/);
 parallel_shell($batch_align_shell, "$projectDir/align.sh", $thread, 8) if ($step =~ /b/);
 $main_shell .= "sh $projectDir/fastq.deal.sh >$projectDir/fastq.deal.sh.o 2>$projectDir/fastq.deal.sh.e\n" if ($step =~ /c/ or $step =~ /f/);
+$main_shell .= "sh $projectDir/align.sh >$projectDir/align.sh.o 2>$projectDir/align.sh.e\n" if ($step =~ /b/);
 
 #foreach my $sampleId (sort {$a cmp $b} keys %sampleInfo) {
 #	# SNP/InDel detection
@@ -279,9 +283,9 @@ $main_shell .= "sh $projectDir/fastq.deal.sh >$projectDir/fastq.deal.sh.o 2>$pro
 if ($step =~ /f/ and $step =~ /b/) {
 	#$main_shell .= "cat $projectDir/sample.fq.stat.xls $projectDir/sample.bam.stat.xls | sed '7d' | sed '8,10d'> $projectDir/sample.stat.xls\n";
 	$main_shell.=<<MV;
-mkdir -p $workDir/${prefix}Result 
-mv $projectDir/*/01.filter/{*.fq.gz,*.html,*.json} $workDir/${prefix}Result
-mv $projectDir/*/02.align/*bam* $workDir/${prefix}Result
+#mkdir -p $workDir/${prefix}Result 
+#mv $projectDir/*/01.filter/{*.fq.gz,*.html,*.json} $workDir/${prefix}Result
+#mv $projectDir/*/02.align/*bam* $workDir/${prefix}Result
 MV
 }
 

@@ -16,6 +16,7 @@ sub reads_align {
 	my $prefix = shift;
 	my $fastq = shift;
 	my $ref = shift;
+	my $platform = shift;
 	my $dbsnp = shift;
 	my $mills = shift;
 	my $tindels = shift;
@@ -34,10 +35,10 @@ if [ -e $fq2 ]
 then
 	$bwa aln $arg $ref $fq2 > $outDir/$prefix.aln_sa2.sai &
 	wait
-	$bwa sampe -r '\@RG\\tID:$prefix\\tSM:$prefix' $ref $outDir/$prefix.aln_sa1.sai $outDir/$prefix.aln_sa2.sai $fq1 $fq2 > $outDir/$prefix.sam
+	$bwa sampe -r '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $outDir/$prefix.aln_sa1.sai $outDir/$prefix.aln_sa2.sai $fq1 $fq2 > $outDir/$prefix.sam
 else
 	wait
-	$bwa samse -r '\@RG\\tID:$prefix\\tSM:$prefix' $ref $outDir/$prefix.aln_sa1.sai $fq1 > $outDir/$prefix.sam
+	$bwa samse -r '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $outDir/$prefix.aln_sa1.sai $fq1 > $outDir/$prefix.sam
 
 fi
 ALN
@@ -49,7 +50,7 @@ then
 	$fq2=""
 if
 MEM
-		$shell .= "$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix' $ref $fq1 $fq2 > $outDir/$prefix.sam\n";
+		$shell .= "$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 $fq2 > $outDir/$prefix.sam\n";
 	}
 	$shell.=<<DEAL;
 $samtools sort -n -T $outDir --no-PG --threads $thread -o $outDir/$prefix.bam $outDir/$prefix.sam
@@ -60,7 +61,7 @@ $samtools sort -T $outDir --no-PG --threads $thread -o $outDir/$prefix.sort.bam 
 rm $outDir/$prefix.fixmate.bam
 $samtools markdup -T $outDir --no-PG --threads $thread $outDir/$prefix.sort.bam $outDir/$prefix.markdup.bam
 rm $outDir/$prefix.sort.bam
-$samtools index --threads $thread $outDir/$prefix.markdup.bam
+$samtools index -@ $thread $outDir/$prefix.markdup.bam
 # Indel附近重新比对
 ## 确定重新比对的区域
 java -Xmx10g -jar $gatk3 \\
