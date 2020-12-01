@@ -241,7 +241,7 @@ FILTER
 		#@{$sampleInfo{$sampleId}{'clean'}} = ($fastq->[0], $fastq->[1]) unless ($sampleInfo{$sampleId}{'clean'});
 		my $align_program = $config->{'bwa'};
 		reads_align($align_program, $config->{'samtools'}, $config->{'gatk3'}, $thread, $sampleId, $sampleInfo{$sampleId}{'clean'},
-                    $ref, $config->{'dict'}, $config->{'dbsnp'}, $config->{'mills'}, $config->{'tindels'}, $align_way, $align_arg, $alignDir, $rm);
+                    $ref, $config->{'dbsnp'}, $config->{'mills'}, $config->{'tindels'}, $align_way, $align_arg, $alignDir, $rm);
 		#$sample_shell{$sampleId} .= "sh $alignDir/$sampleId.align.sh >$alignDir/$sampleId.align.sh.o 2>$alignDir/$sampleId.align.sh.e\n";
 		$batch_align_shell .= "sh $alignDir/$sampleId.align.sh >$alignDir/$sampleId.align.sh.o 2>$alignDir/$sampleId.align.sh.e\n";
 		$sampleInfo{$sampleId}{'align'} = "$alignDir/$sampleId.final.bam"; 

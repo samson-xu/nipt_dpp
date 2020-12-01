@@ -1,10 +1,9 @@
 #File or tool path settings
 #name	path
 hg19	/nipt/db/ucsc.hg19.fa
-dict	/data/bioit/biodata/xuxy/pipeline/wgs/db/hg19.dict
 dbsnp	/nipt/db/dbsnp_138.hg19.vcf.gz
 mills	/nipt/db/Mills_and_1000G_gold_standard.indels.hg19.sites.vcf.gz
-tindels	/nipt/db/1000G_phase1.indels.hg19.sites.vcf
+tindels	/nipt/db/1000G_phase1.indels.hg19.sites.vcf.gz
 bcl2fastq	/usr/local/bin/bcl2fastq
 fastqc	/nipt/soft/FastQC/fastqc
 fastp	/nipt/soft/fastp-master/fastp

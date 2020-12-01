@@ -16,7 +16,6 @@ sub reads_align {
 	my $prefix = shift;
 	my $fastq = shift;
 	my $ref = shift;
-	my $dict = shift;
 	my $dbsnp = shift;
 	my $mills = shift;
 	my $tindels = shift;
