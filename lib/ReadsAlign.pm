@@ -39,24 +39,25 @@ then
 else
 	wait
 	$bwa samse -r '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $outDir/$prefix.aln_sa1.sai $fq1 > $outDir/$prefix.sam
-
 fi
+rm $outDir/$prefix.aln_sa*
 ALN
 	} else {
 		$arg = "-K 100000000 -t $thread -Y" if ($arg eq '');
 		$shell.=<<MEM;
-if [ ! -e $fq2 ]
+if [ -e $fq2 ]
 then
-	$fq2=""
-if
+	$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 $fq2 > $outDir/$prefix.sam
+else
+	$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 > $outDir/$prefix.sam
+fi
 MEM
-		$shell .= "$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 $fq2 > $outDir/$prefix.sam\n";
 	}
 	$shell.=<<DEAL;
-$samtools sort -n -T $outDir --no-PG --threads $thread -o $outDir/$prefix.bam $outDir/$prefix.sam
+$samtools sort -n -T $outDir --no-PG --threads $thread -o $outDir/$prefix.sortn.bam $outDir/$prefix.sam
 rm $outDir/$prefix.sam
-$samtools fixmate -m --no-PG --threads $thread $outDir/$prefix.bam $outDir/$prefix.fixmate.bam 
-rm $outDir/$prefix.bam
+$samtools fixmate -m --no-PG --threads $thread $outDir/$prefix.sortn.bam $outDir/$prefix.fixmate.bam 
+rm $outDir/$prefix.sortn.bam
 $samtools sort -T $outDir --no-PG --threads $thread -o $outDir/$prefix.sort.bam $outDir/$prefix.fixmate.bam
 rm $outDir/$prefix.fixmate.bam
 $samtools markdup -T $outDir --no-PG --threads $thread $outDir/$prefix.sort.bam $outDir/$prefix.markdup.bam
@@ -64,7 +65,7 @@ rm $outDir/$prefix.sort.bam
 $samtools index -@ $thread $outDir/$prefix.markdup.bam
 # Indel附近重新比对
 ## 确定重新比对的区域
-java -Xmx10g -jar $gatk3 \\
+java -Xmx5g -jar $gatk3 \\
 -T RealignerTargetCreator \\
 -nt $thread \\
 -R $ref \\
@@ -73,7 +74,7 @@ java -Xmx10g -jar $gatk3 \\
 -known $mills \\
 -known $tindels
 ## 重新比对
-java -Xmx10g -jar $gatk3 \\
+java -Xmx5g -jar $gatk3 \\
 -T IndelRealigner \\
 -R $ref \\
 -targetIntervals $outDir/$prefix.realn.intervals \\
@@ -84,7 +85,7 @@ java -Xmx10g -jar $gatk3 \\
 rm $outDir/$prefix.markdup.bam*
 # 比对文件碱基质量值校正
 ## 生成质量校正所需输入文件grp
-java -Xmx10g -jar $gatk3 \\
+java -Xmx5g -jar $gatk3 \\
 -T BaseRecalibrator \\
 -nct $thread \\
 -R $ref \\
@@ -93,14 +94,14 @@ java -Xmx10g -jar $gatk3 \\
 -knownSites $mills \\
 -o $outDir/$prefix.realn.grp
 ## 输出质量校正后的数据
-java -Xmx10g -jar $gatk3 \\
+java -Xmx5g -jar $gatk3 \\
 -T PrintReads \\
 -nct $thread \\
 -R $ref \\
 -I $outDir/$prefix.realn.bam \\
 -BQSR $outDir/$prefix.realn.grp \\
 -o $outDir/$prefix.bam
-rm $outDir/$prefix.realn.* $outDir/$prefix.realn.grp
+rm $outDir/$prefix.realn.*
 
 $samtools stats $outDir/$prefix.bam > $outDir/$prefix.bam.stats 
 

@@ -31,12 +31,13 @@ my $sample_match_filter = "";
 my $platform = "ILLUMINA";
 my $ref = $config->{'hg19'};
 my $step = 'cfb';
-my $thread = '35';
+my $thread = 35;
 my $run = 'no';
 my $rm = 'yes';
 my $fastqc_arg = '';
 my $fastp_arg = "-q 5 -u 50 -n 4 -e 10 -l 20 -w 4";
 my $align_way = 'mem';
+my $align_thread = 8;
 my $align_arg = '';
 
 # Guide
@@ -83,6 +84,7 @@ $parameter_separator Align $parameter_separator
 $indent --align_way <str>             Select align algorithm, 'backtrack', 'mem', default "$align_way"
 $indent --backtrack_help              Print BWA-backtrack help information
 $indent --mem_help                    Print BWA-mem help information
+$indent --align_thread                Set the number of threads for a sample align, default "$align_thread"
 $indent --align_arg <str>             Align argument setting, this has to correspond to the align_way, default "$align_arg"
 
 NOTE
@@ -121,6 +123,7 @@ GetOptions(
 	"align_way=s" => \$align_way, 
 	"backtrack_help" => \$backtrack_help,
 	"mem_help" => \$mem_help,
+	"align_thread=i" => \$align_thread,
 	"align_arg=s" => \$align_arg,
 );
 
@@ -171,6 +174,10 @@ if ($input eq "fq.lst" ) {
 	parallel_shell($bam2fastq_shell, "$projectDir/bam2fastq.sh", $thread, 4);
 	$main_shell .= "sh $projectDir/bam2fastq.sh >$projectDir/bam2fastq.sh.o 2>$projectDir/bam2fastq.sh.e\n";
 } else {
+	unless (-e "$input/SampleSheet.csv") {
+		print STDERR "$input/SampleSheet.csv isn't exist! Plesse check it!\n";
+		exit;
+	}
 	system("mkdir -p $projectDir/fastq") == 0 || die $!;
 	my $bcl2fastq_shell=<<BCL;
 # convert bcl to fastq
@@ -243,7 +250,7 @@ FILTER
 		my $alignDir = "$projectDir/$sampleId/02.align";
 		#@{$sampleInfo{$sampleId}{'clean'}} = ($fastq->[0], $fastq->[1]) unless ($sampleInfo{$sampleId}{'clean'});
 		my $align_program = $config->{'bwa'};
-		reads_align($align_program, $config->{'samtools'}, $config->{'gatk3'}, $thread, $sampleId, $sampleInfo{$sampleId}{'clean'},
+		reads_align($align_program, $config->{'samtools'}, $config->{'gatk3'}, $align_thread, $sampleId, $sampleInfo{$sampleId}{'clean'},
                     $ref, $platform, $config->{'dbsnp'}, $config->{'mills'}, $config->{'tindels'}, $align_way, $align_arg, $alignDir, $rm);
 		#$sample_shell{$sampleId} .= "sh $alignDir/$sampleId.align.sh >$alignDir/$sampleId.align.sh.o 2>$alignDir/$sampleId.align.sh.e\n";
 		$batch_align_shell .= "sh $alignDir/$sampleId.align.sh >$alignDir/$sampleId.align.sh.o 2>$alignDir/$sampleId.align.sh.e\n";
@@ -251,7 +258,7 @@ FILTER
 	}
 }
 parallel_shell($batch_fastq_shell, "$projectDir/fastq.deal.sh", $thread, 3) if ($step =~ /c/ or $step =~ /f/);
-parallel_shell($batch_align_shell, "$projectDir/align.sh", $thread, 8) if ($step =~ /b/);
+parallel_shell($batch_align_shell, "$projectDir/align.sh", $thread, $align_thread) if ($step =~ /b/);
 $main_shell .= "sh $projectDir/fastq.deal.sh >$projectDir/fastq.deal.sh.o 2>$projectDir/fastq.deal.sh.e\n" if ($step =~ /c/ or $step =~ /f/);
 $main_shell .= "sh $projectDir/align.sh >$projectDir/align.sh.o 2>$projectDir/align.sh.e\n" if ($step =~ /b/);
 
@@ -285,7 +292,7 @@ if ($step =~ /f/ and $step =~ /b/) {
 	$main_shell.=<<MV;
 #mkdir -p $workDir/${prefix}Result 
 #mv $projectDir/*/01.filter/{*.fq.gz,*.html,*.json} $workDir/${prefix}Result
-#mv $projectDir/*/02.align/*bam* $workDir/${prefix}Result
+#mv $projectDir/*/02.align/{*bam*,*bai} $workDir/${prefix}Result
 MV
 }
 
