@@ -30,7 +30,7 @@ my $prefix = "";
 my $sample_match_filter = "";
 my $platform = "ILLUMINA";
 my $ref = $config->{'hg19'};
-my $step = 'cfb';
+my $step = 'tcfb';
 my $thread = 35;
 my $run = 'no';
 my $rm = 'yes';
@@ -55,6 +55,7 @@ $guide_separator
 
 
 FUNCTIONS
+$indent t. Convert input data to FastQ format.
 $indent c. Quality control and check(FastQC) of input data(FASTQ).
 $indent f. Adapter cut and low quality sequence filter of fastq(Fastp).
 $indent b. Fastq Alignment and quality control of sequence alignment results.
@@ -95,9 +96,10 @@ $indent 4. If input is unmapped bam list, format like: SampleId    bam
 $indent 5. Fastq quality system should be phred 33
 
 EXAMPLE
-$indent Example1: $0 --step cfb --run n bcl_dir 
-$indent Example2: $0 --step cfb --run n fq.lst 
-$indent Example3: $0 --step cfb --run n ubam.lst 
+$indent Example1: $0 --step t --run y bcl_dir 
+$indent Example1: $0 --step tcfb --run n bcl_dir 
+$indent Example2: $0 --step tcfb --run n fq.lst 
+$indent Example3: $0 --step tcfb --run n ubam.lst 
 $guide_separator
 
 INFO
@@ -109,7 +111,7 @@ GetOptions(
 	"workDir=s" => \$workDir,
 	"prefix=s" => \$prefix,
 	"smf=s" => \$sample_match_filter,
-	"platform" => \$platform,
+	"platform=s" => \$platform,
 	"ref=s" => \$ref,
 	"step=s" => \$step,
 	"thread=i" => \$thread,
@@ -147,65 +149,68 @@ system("mkdir -p $projectDir") == 0 || die $!;
 $main_shell = "# Run nipt_dpp pipeline for all samples\n";
 # load fastq info
 my %sampleInfo;
-if ($input eq "fq.lst" ) {
-	open FQ, $input or die $!;
-	while (<FQ>) {
-		next if (/#/);
-		chomp;
-		my @arr = split /\s+/;
-		next if ($arr[0] =~ m/$sample_match_filter/);
-		@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1]) if (@arr == 2);	
-		@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);	
-	}
-	close FQ;
-} elsif ($input eq "ubam.lst") {
-	my $bam2fastq_shell = "";	
-	system("mkdir -p $projectDir/fastq") == 0 || die $!;
-	open UBAM, $input or die $!;
-	while (<UBAM>) {
-		next if (/#/);
-		chomp;
-		my @arr = split /\s+/;
-		next if ($arr[0] =~ m/$sample_match_filter/);
-		$bam2fastq_shell .= "$config->{'samtools'} fastq --threads 4 -0 $projectDir/fastq/$arr[0].1.fq.gz $arr[1]\n";
-		@{$sampleInfo{$arr[0]}{'fastq'}} = ("$projectDir/fastq/$arr[0].1.fq.gz");
-	}
-	close UBAM;
-	parallel_shell($bam2fastq_shell, "$projectDir/bam2fastq.sh", $thread, 4);
-	$main_shell .= "sh $projectDir/bam2fastq.sh >$projectDir/bam2fastq.sh.o 2>$projectDir/bam2fastq.sh.e\n";
-} else {
-	unless (-e "$input/SampleSheet.csv") {
-		print STDERR "$input/SampleSheet.csv isn't exist! Plesse check it!\n";
-		exit;
-	}
-	system("mkdir -p $projectDir/fastq") == 0 || die $!;
-	my $bcl2fastq_shell=<<BCL;
+if ($step =~ /t/) {
+	if ($input eq "fq.lst" ) {
+		open FQ, $input or die $!;
+		while (<FQ>) {
+			next if (/#/);
+			chomp;
+			my @arr = split /\s+/;
+			next if ($arr[0] =~ m/$sample_match_filter/);
+			@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1]) if (@arr == 2);
+			@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);
+		}
+		close FQ;
+	} elsif ($input eq "ubam.lst") {
+		my $bam2fastq_shell = "";
+		system("mkdir -p $projectDir/fastq") == 0 || die $!;
+		open UBAM, $input or die $!;
+		while (<UBAM>) {
+			next if (/#/);
+			chomp;
+			my @arr = split /\s+/;
+			next if ($arr[0] =~ m/$sample_match_filter/);
+			$bam2fastq_shell .= "$config->{'samtools'} fastq --threads 4 -0 $projectDir/fastq/$arr[0].1.fq.gz $arr[1]\n";
+			@{$sampleInfo{$arr[0]}{'fastq'}} = ("$projectDir/fastq/$arr[0].1.fq.gz");
+		}
+		close UBAM;
+		parallel_shell($bam2fastq_shell, "$projectDir/bam2fastq.sh", $thread, 4);
+		$main_shell .= "sh $projectDir/bam2fastq.sh >$projectDir/bam2fastq.sh.o 2>$projectDir/bam2fastq.sh.e\n";
+	} else {
+		unless (-e "$input/SampleSheet.csv") {
+			print STDERR "$input/SampleSheet.csv isn't exist! Plesse check it!\n";
+			exit;
+		}
+		system("mkdir -p $projectDir/fastq") == 0 || die $!;
+		my $bcl2fastq_shell=<<BCL;
 # convert bcl to fastq
 $config->{'bcl2fastq'} -R $input -o $projectDir/tmp -r $thread -p $thread -w $thread --no-lane-splitting
 rm $projectDir/tmp/Undetermined*
+rm $projectDir/tmp/*$sample_match_filter* $projectDir/tmp/*/*$sample_match_filter*
 mv $projectDir/tmp/*gz $projectDir/tmp/*/*gz $projectDir/fastq
 rm -rf $projectDir/tmp
 BCL
-	open SS, "$input/SampleSheet.csv" or die $!;
-	my $data_label = 0;
-	while (<SS>) {
-		if (/Data/) {
-			$data_label = 1;
-			next;
+		open SS, "$input/SampleSheet.csv" or die $!;
+		my $data_label = 0;
+		while (<SS>) {
+			if (/Data/) {
+				$data_label = 1;
+				next;
+			}
+			if ($data_label) {
+				next if (/#/);
+				next if (/^Sample/i);
+				next if (/^\s+$/);
+				chomp;
+				my @arr = split ",";
+				next if ($arr[1] =~ m/$sample_match_filter/);
+				@{$sampleInfo{$arr[1]}{'fastq'}} = ("$projectDir/fastq/$arr[1]*R1*gz", "$projectDir/fastq/$arr[1]*R2*gz");
+			}
 		}
-		if ($data_label) {
-			next if (/#/);
-			next if (/^Sample/i);
-			next if (/^\s+$/);
-			chomp;
-			my @arr = split ",";
-			next if ($arr[1] =~ m/$sample_match_filter/);
-			@{$sampleInfo{$arr[1]}{'fastq'}} = ("$projectDir/fastq/$arr[1]*R1*gz", "$projectDir/fastq/$arr[1]*R2*gz");
-		}
+		close SS;
+		write_shell($bcl2fastq_shell, "$projectDir/bcl2fastq.sh");
+		$main_shell .= "sh $projectDir/bcl2fastq.sh >$projectDir/bcl2fastq.sh.o 2>$projectDir/bcl2fastq.sh.e\n";
 	}
-	close SS;
-	write_shell($bcl2fastq_shell, "$projectDir/bcl2fastq.sh");
-	$main_shell .= "sh $projectDir/bcl2fastq.sh >$projectDir/bcl2fastq.sh.o 2>$projectDir/bcl2fastq.sh.e\n";
 }
 #print Dumper \%sampleInfo;
 my $sample_total = keys %sampleInfo;
