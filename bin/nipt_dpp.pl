@@ -181,13 +181,14 @@ if ($step =~ /t/) {
 			print STDERR "$input/SampleSheet.csv isn't exist! Plesse check it!\n";
 			exit;
 		}
-		system("mkdir -p $projectDir/fastq") == 0 || die $!;
+		my $run_dir = basename($input);
+		system("mkdir -p $projectDir/fastq/$run_dir") == 0 || die $!;
 		my $bcl2fastq_shell=<<BCL;
 # convert bcl to fastq
 $config->{'bcl2fastq'} -R $input -o $projectDir/tmp -r $thread -p $thread -w $thread --no-lane-splitting
 rm $projectDir/tmp/Undetermined*
 rm $projectDir/tmp/*$sample_match_filter* $projectDir/tmp/*/*$sample_match_filter*
-mv $projectDir/tmp/*gz $projectDir/tmp/*/*gz $projectDir/fastq
+mv $projectDir/tmp/*gz $projectDir/tmp/*/*gz $projectDir/fastq/$run_dir
 rm -rf $projectDir/tmp
 BCL
 		open SS, "$input/SampleSheet.csv" or die $!;
@@ -204,12 +205,13 @@ BCL
 				chomp;
 				my @arr = split ",";
 				next if ($arr[1] =~ m/$sample_match_filter/);
-				@{$sampleInfo{$arr[1]}{'fastq'}} = ("$projectDir/fastq/$arr[1]*R1*gz", "$projectDir/fastq/$arr[1]*R2*gz");
+				@{$sampleInfo{$arr[1]}{'fastq'}} = ("$projectDir/fastq/$run_dir/$arr[1]*R1*gz", "$projectDir/fastq/$run_dir/$arr[1]*R2*gz");
 			}
 		}
 		close SS;
 		write_shell($bcl2fastq_shell, "$projectDir/bcl2fastq.sh");
 		$main_shell .= "sh $projectDir/bcl2fastq.sh >$projectDir/bcl2fastq.sh.o 2>$projectDir/bcl2fastq.sh.e\n";
+		$main_shell .= "cp $projectDir/bcl2fastq.sh.e $projectDir/fastq/$run_dir/$run_dir.log\n";
 	}
 }
 #print Dumper \%sampleInfo;
@@ -222,7 +224,9 @@ foreach my $sampleId (sort {$a cmp $b} keys %sampleInfo) {
 	my $fastq = $sampleInfo{$sampleId}{'fastq'};
 	if ($step =~ /c/) {
 		my $fastqcDir = "$projectDir/$sampleId/00.fastqc";
-		my $fastqc_shell=<<FASTQC;
+		my $fastqc_shell = "# Shell for fastq check\n";
+		if ($fastq->[1]) {
+			$fastqc_shell.=<<FASTQC;
 if [ -e $fastq->[1] ]
 then
 	$config->{fastqc} -t 2 -o $fastqcDir $fastqc_arg $fastq->[0] $fastq->[1]	
@@ -231,13 +235,19 @@ else
 fi
 rm $fastqcDir/*.zip
 FASTQC
+		} else {
+			$fastqc_shell .= "$config->{fastqc} -t 2 -o $fastqcDir $fastqc_arg $fastq->[0]\n";	
+			$fastqc_shell .= "rm $fastqcDir/*.zip\n";	
+		}
 		write_shell($fastqc_shell, "$fastqcDir/$sampleId.fastqc.sh");
 		$batch_fastq_shell .= "sh $fastqcDir/$sampleId.fastqc.sh >$fastqcDir/$sampleId.fastqc.sh.o 2>$fastqcDir/$sampleId.fastqc.sh.e\n";
 	}
 	# Fastq filter
 	if ($step =~ /f/) {
 		my $filterDir = "$projectDir/$sampleId/01.filter";
-		my $filter_shell=<<FILTER;
+		my $filter_shell = "# Shell for fastq filter\n";
+		if ($fastq->[1]) {
+			$filter_shell.=<<FILTER;
 if [ -e $fastq->[1] ]
 then
 	$config->{fastp} -i $fastq->[0] -o $filterDir/$sampleId.clean.1.fq.gz -I $fastq->[1] -O $filterDir/$sampleId.clean.2.fq.gz --detect_adapter_for_pe $fastp_arg -j $filterDir/$sampleId.fastq.json -h $filterDir/$sampleId.fastq.html -R '$sampleId fastq report'
@@ -245,6 +255,9 @@ else
 	$config->{fastp} -i $fastq->[0] -o $filterDir/$sampleId.clean.1.fq.gz $fastp_arg -j $filterDir/$sampleId.fastq.json -h $filterDir/$sampleId.fastq.html -R '$sampleId fastq report'
 fi
 FILTER
+		} else {
+			$filter_shell .= "$config->{fastp} -i $fastq->[0] -o $filterDir/$sampleId.clean.1.fq.gz $fastp_arg -j $filterDir/$sampleId.fastq.json -h $filterDir/$sampleId.fastq.html -R '$sampleId fastq report'\n";
+		}
 		#$filter_shell .= "perl -I '$Bin/../lib' -MReadsStat -e \"reads_stat('$filterDir/$sampleId.fastq.json')\"\n";
 		write_shell($filter_shell, "$filterDir/$sampleId.filter.sh");
 		$batch_fastq_shell .= "sh $filterDir/$sampleId.filter.sh >$filterDir/$sampleId.filter.sh.o 2>$filterDir/$sampleId.filter.sh.e\n";
@@ -307,4 +320,4 @@ write_shell($main_shell, "$projectDir/main.sh");
 
 stat_log($sample_total, $Bin) if (defined $stat);
 
-system("nohup sh $projectDir/main.sh >$projectDir/main.sh.o 2>$projectDir/main.sh.e &") == 0 || die $! if ($run =~ m/y/i);
+system("sh $projectDir/main.sh >$projectDir/main.sh.o 2>$projectDir/main.sh.e") == 0 || die $! if ($run =~ m/y/i);

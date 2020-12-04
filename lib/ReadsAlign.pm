@@ -30,7 +30,8 @@ sub reads_align {
 	if ($way eq 'backtrack') {
 		$arg ||= "-t $thread";
 		$shell .= "$bwa aln $arg $ref $fq1 > $outDir/$prefix.aln_sa1.sai &\n";
-		$shell.=<<ALN;
+		if ($fq2) {
+			$shell.=<<ALN;
 if [ -e $fq2 ]
 then
 	$bwa aln $arg $ref $fq2 > $outDir/$prefix.aln_sa2.sai &
@@ -42,9 +43,15 @@ else
 fi
 rm $outDir/$prefix.aln_sa*
 ALN
+		} else {
+			$shell .= "wait\n";
+			$shell .= "$bwa samse -r '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $outDir/$prefix.aln_sa1.sai $fq1 > $outDir/$prefix.sam\n";
+			$shell .= "rm $outDir/$prefix.aln_sa*\n";
+		}
 	} else {
 		$arg = "-K 100000000 -t $thread -Y" if ($arg eq '');
-		$shell.=<<MEM;
+		if ($fq2) {
+			$shell.=<<MEM;
 if [ -e $fq2 ]
 then
 	$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 $fq2 > $outDir/$prefix.sam
@@ -52,6 +59,9 @@ else
 	$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 > $outDir/$prefix.sam
 fi
 MEM
+		} else {
+			$shell .= "$bwa mem $arg -R '\@RG\\tID:$prefix\\tSM:$prefix\\tPL:$platform' $ref $fq1 > $outDir/$prefix.sam\n";
+		}
 	}
 	$shell.=<<DEAL;
 $samtools sort -n -T $outDir --no-PG --threads $thread -o $outDir/$prefix.sortn.bam $outDir/$prefix.sam
