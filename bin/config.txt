@@ -10,3 +10,4 @@ fastp	/nipt/soft/fastp-master/fastp
 bwa	/nipt/soft/bwa-0.7.17/bwa
 samtools	/usr/local/bin/samtools
 gatk3	/nipt/soft/GenomeAnalysisTK.jar	
+gtz	/nipt/soft/gtz

@@ -31,11 +31,11 @@ my $sample_match_filter = "";
 my $platform = "ILLUMINA";
 my $ref = $config->{'hg19'};
 my $step = 'tcfb';
-my $thread = 35;
+my $thread = 36;
 my $run = 'no';
 my $rm = 'yes';
 my $fastqc_arg = '';
-my $fastp_arg = "-q 5 -u 50 -n 4 -e 10 -l 20 -w 4";
+my $fastp_arg = "-q 5 -u 50 -n 4 -l 25 -w 4";
 my $align_way = 'mem';
 my $align_thread = 8;
 my $align_arg = '';
@@ -150,7 +150,7 @@ $main_shell = "# Run nipt_dpp pipeline for all samples\n";
 # load fastq info
 my %sampleInfo;
 if ($step =~ /t/) {
-	if ($input eq "fq.lst" ) {
+	if ($input =~ m/fq.lst/) {
 		open FQ, $input or die $!;
 		while (<FQ>) {
 			next if (/#/);
@@ -161,7 +161,7 @@ if ($step =~ /t/) {
 			@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);
 		}
 		close FQ;
-	} elsif ($input eq "ubam.lst") {
+	} elsif ($input =~ m/ubam.lst/) {
 		my $bam2fastq_shell = "";
 		system("mkdir -p $projectDir/fastq") == 0 || die $!;
 		open UBAM, $input or die $!;
@@ -258,7 +258,6 @@ FILTER
 		} else {
 			$filter_shell .= "$config->{fastp} -i $fastq->[0] -o $filterDir/$sampleId.clean.1.fq.gz $fastp_arg -j $filterDir/$sampleId.fastq.json -h $filterDir/$sampleId.fastq.html -R '$sampleId fastq report'\n";
 		}
-		#$filter_shell .= "perl -I '$Bin/../lib' -MReadsStat -e \"reads_stat('$filterDir/$sampleId.fastq.json')\"\n";
 		write_shell($filter_shell, "$filterDir/$sampleId.filter.sh");
 		$batch_fastq_shell .= "sh $filterDir/$sampleId.filter.sh >$filterDir/$sampleId.filter.sh.o 2>$filterDir/$sampleId.filter.sh.e\n";
 		@{$sampleInfo{$sampleId}{'clean'}} = ("$filterDir/$sampleId.clean.1.fq.gz", "$filterDir/$sampleId.clean.2.fq.gz");
@@ -292,25 +291,16 @@ $main_shell .= "sh $projectDir/align.sh >$projectDir/align.sh.o 2>$projectDir/al
 #		$main_shell .= "sh $projectDir/$sampleId/$sampleId.sh >$projectDir/$sampleId/$sampleId.sh.o 2>$projectDir/$sampleId/$sampleId.sh.e\n";
 #	}
 #}
-#
-#if ($step =~ /f/) {
-#	$main_shell.=<<PSFQ;
-#paste $projectDir/*/01.filter/*.fq.stat.txt | awk '{for(i=3; i<=NF; i+=2){\$i=""}; print \$0}' | sed "s/\\s\\+/\\t/g" > $projectDir/sample.fq.stat.xls
-#PSFQ
-#}
-#
-#if ($step =~ /b/) { 
-#	$main_shell.=<<PSBM;
-#paste $projectDir/*/02.align/*.bam.stat.txt | awk '{for(i=3; i<=NF; i+=2){\$i=""}; print \$0}' | sed "s/\\s\\+/\\t/g" > $projectDir/sample.bam.stat.xls
-#PSBM
-#}
-#
 if ($step =~ /f/ and $step =~ /b/) {
-	#$main_shell .= "cat $projectDir/sample.fq.stat.xls $projectDir/sample.bam.stat.xls | sed '7d' | sed '8,10d'> $projectDir/sample.stat.xls\n";
 	$main_shell.=<<MV;
-#mkdir -p $workDir/${prefix}Result 
-#mv $projectDir/*/01.filter/{*.fq.gz,*.html,*.json} $workDir/${prefix}Result
-#mv $projectDir/*/02.align/{*bam*,*bai} $workDir/${prefix}Result
+mkdir -p $workDir/${prefix}Result 
+mv $projectDir/*/01.filter/{*.fq.gz,*.html,*.json} $workDir/${prefix}Result
+mv $projectDir/*/02.align/{*bam*,*bai,*.e} $workDir/${prefix}Result
+ls $workDir/${prefix}Result/*gz | while read i
+do
+	out=\${i/\%fq.gz/fq.gtz}
+	$config->{'gtz'} --ref $ref --donot-pack-ref -o \$out -e \$i 
+done
 MV
 }
 

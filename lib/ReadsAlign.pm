@@ -115,6 +115,8 @@ rm $outDir/$prefix.realn.*
 
 $samtools stats $outDir/$prefix.bam > $outDir/$prefix.bam.stats 
 
+$samtools quickcheck $outDir/$prefix.bam > $outDir/$prefix.bam.check
+
 DEAL
 	write_shell($shell, "$outDir/$prefix.align.sh");
 }
