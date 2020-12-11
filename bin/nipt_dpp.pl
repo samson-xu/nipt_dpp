@@ -37,7 +37,7 @@ my $rm = 'yes';
 my $fastqc_arg = '';
 my $fastp_arg = "-q 5 -u 50 -n 4 -l 25 -w 4";
 my $align_way = 'mem';
-my $align_thread = 8;
+my $align_thread = 4;
 my $align_arg = '';
 
 # Guide
