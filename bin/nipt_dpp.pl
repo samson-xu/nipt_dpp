@@ -186,11 +186,11 @@ if ($step =~ /t/) {
 		my $bcl2fastq_shell=<<BCL;
 # convert bcl to fastq
 $config->{'bcl2fastq'} -R $input -o $projectDir/tmp -r $thread -p $thread -w $thread --no-lane-splitting
-rm $projectDir/tmp/Undetermined*
-rm $projectDir/tmp/*$sample_match_filter* $projectDir/tmp/*/*$sample_match_filter*
+rm $projectDir/tmp/Undetermined* $projectDir/tmp/*/Undetermined*
 mv $projectDir/tmp/*gz $projectDir/tmp/*/*gz $projectDir/fastq/$run_dir
 rm -rf $projectDir/tmp
 BCL
+		$bcl2fastq_shell .= "rm $projectDir/fastq/$run_dir/*$sample_match_filter*" if ($sample_match_filter);
 		open SS, "$input/SampleSheet.csv" or die $!;
 		my $data_label = 0;
 		while (<SS>) {
