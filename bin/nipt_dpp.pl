@@ -294,12 +294,18 @@ $main_shell .= "sh $projectDir/align.sh >$projectDir/align.sh.o 2>$projectDir/al
 if ($step =~ /f/ and $step =~ /b/) {
 	$main_shell.=<<MV;
 mkdir -p $workDir/${prefix}Result 
-mv $projectDir/*/01.filter/{*.fq.gz,*.html,*.json} $workDir/${prefix}Result
-mv $projectDir/*/02.align/{*bam*,*bai,*.e} $workDir/${prefix}Result
+mv $projectDir/*/01.filter/{*.fq.gz,*.json} $workDir/${prefix}Result
+mv $projectDir/*/02.align/{*bam*,*.e} $workDir/${prefix}Result
+
 ls $workDir/${prefix}Result/*gz | while read i
 do
 	out=\${i/\%fq.gz/fq.gtz}
-	$config->{'gtz'} --ref $ref --donot-pack-ref -o \$out -e \$i 
+	$config->{'gtz'} --ref $ref --donot-pack-ref -o \$out -e \$i
+done
+
+ls $workDir/${prefix}Result/*bam | while read j
+do
+	$config->{'gtz'} --ref $ref --donot-pack-ref -o \$j.gtz -e \$j
 done
 MV
 }
