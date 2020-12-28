@@ -26,6 +26,7 @@ my $ref = '';
 my $cp = '';
 my $samtools = '';
 my $call = '';
+my $gtz = '';
 
 # Guide
 my $guide_separator = "=" x 150;
@@ -58,13 +59,14 @@ $indent --ref <str>                   Reference genome absolute path, default "$
 $indent --cp <str>                    Data cp soft absolute path, default "$ref"
 $indent --samtools <str>              Samtools absolute path, default "$samtools"
 $indent --call <str>                  SNP call soft absolute path, default "$call"
+$indent --gtz <str>                   GTZ soft absolute path, default "$gtz"
 $indent --region <str>                Target region or bed file for variant call, samtools-like region, chr:start-end, such as chr1:6000000-8000000, chr1 and so on 
 
 NOTE
 $indent 1. Input must be bam path list, one sample per line
 
 EXAMPLE
-$indent Example1: $0 --run y --thread 36 --ref hg19.fa --cp cp --samtools /path/for/samtools --call /path/for/call --region chr1:6000000-8000000 bam.lst
+$indent Example1: $0 --run y --thread 36 --ref hg19.fa --cp cp --samtools /path/for/samtools --call /path/for/call --gtz /path/for/gtz --region chr1:6000000-8000000 bam.lst
 $guide_separator
 
 INFO
@@ -80,6 +82,7 @@ GetOptions(
 	"cp=s" => \$cp,
 	"samtools=s" => \$samtools,
 	"call=s" => \$call,
+	"gtz=s" => \$gtz,
 	"region=s" => \$region,
 );
 
@@ -125,6 +128,7 @@ while (<LIST>) {
 	next if (/^\s*$/);
 	chomp;
 	my @arr = split "/";
+	my $ossDir = dirname($_);
 	my $bam = $_;
 	my $sampleId = $arr[-2];
 	my $libDir = "$projectDir/$arr[-3]";
@@ -132,6 +136,8 @@ while (<LIST>) {
 mkdir -p $libDir
 $cp cp $bam $libDir -u 
 $samtools index $libDir/$sampleId.bam
+$gtz --ref $ref --donot-pack-ref -o $libDir/$sampleId.bam.gtz -e $libDir/$sampleId.bam
+$cp cp $libDir/$sampleId.bam.gtz $ossDir -u
 SS
 	foreach my $key (sort {$a<=>$b} keys %rg) {
 		$sample_shell .= "$samtools view -b $libDir/$sampleId.bam $rg{$key} > $libDir/$sampleId.$rg{$key}.bam\n";
@@ -155,7 +161,7 @@ foreach my $key (sort {$a<=>$b} keys %select_bam_lst) {
 # Region SNP call
 my $call_shell = "";
 foreach my $key (sort {$a<=>$b} keys %rg) {
-	$call_shell .= "$call basetype --input $projectDir/call_bam.$key.lst --output $workDir/nipt.$rg{$key} --reference $ref --region $rg{$key} --mapq 30 --thread $thread --batch 10 --rerun\n";
+	$call_shell .= "$call basetype --input $projectDir/call_bam.$key.lst --output $workDir/nipt.$rg{$key} --reference $ref --region $rg{$key} --mapq 30 --thread 4 --batch 10 --rerun\n";
 }
 write_shell($call_shell, "$projectDir/call.sh");
 
