@@ -173,4 +173,4 @@ $main_shell .= "sh $projectDir/call.sh >$projectDir/call.sh.o 2>$projectDir/call
 
 write_shell($main_shell, "$projectDir/main.sh");
 
-system("nohup sh $projectDir/main.sh >$projectDir/main.sh.o 2>$projectDir/main.sh.e &") == 0 || die $! if ($run =~ m/y/i);
+system("sh $projectDir/main.sh >$projectDir/main.sh.o 2>$projectDir/main.sh.e") == 0 || die $! if ($run =~ m/y/i);
