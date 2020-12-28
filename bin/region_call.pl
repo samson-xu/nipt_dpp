@@ -12,8 +12,8 @@ use File::Basename;
 use Getopt::Long;
 use Data::Dumper;
 use POSIX;
-use FindBin qw($Bin../lib);
-use lib "$Bin";
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
 use WriteShell;
 
 # Global variable
@@ -58,7 +58,7 @@ $indent --ref <str>                   Reference genome absolute path, default "$
 $indent --cp <str>                    Data cp soft absolute path, default "$ref"
 $indent --samtools <str>              Samtools absolute path, default "$samtools"
 $indent --call <str>                  SNP call soft absolute path, default "$call"
-$indent --region <str>                Target region for variant call, samtools-like region, chr:start-end, such as chr1:6000000-8000000, chr1 and so on 
+$indent --region <str>                Target region or bed file for variant call, samtools-like region, chr:start-end, such as chr1:6000000-8000000, chr1 and so on 
 
 NOTE
 $indent 1. Input must be bam path list, one sample per line
@@ -94,9 +94,31 @@ unless (-e $input) {
 	exit;
 }
 system("mkdir -p $projectDir") == 0 || die $!;
+# load region
+my %rg;
+if (-e $region) {
+	open RG, $region or die $!;
+	my $count = 0;
+	while (<RG>) {
+		next if (/^#/);
+		next if (/^\s*$/);
+		chomp;
+		$count++;
+		my @arr = split /\s/;
+		my $value = "$arr[0]:$arr[1]-$arr[2]";
+		$rg{$count} = $value;
+	}
+	close RG;
+} else {
+	if ($region) {
+		$rg{1} = $region;
+	} else {
+		$rg{1} = "";
+	}
+}
 # Target region select
 my $batch_select_shell = "";
-my $select_bam_lst = "";
+my %select_bam_lst = "";
 open LIST, $input or die $!;
 while (<LIST>) {
 	next if (/#/);
@@ -104,19 +126,19 @@ while (<LIST>) {
 	chomp;
 	my @arr = split "/";
 	my $bam = $_;
-	my $bai = $bam;
-	$bai =~ s/bam/bai/;
 	my $sampleId = $arr[-2];
 	my $libDir = "$projectDir/$arr[-3]";
 	my $sample_shell=<<SS; 
 mkdir -p $libDir
 $cp cp $bam $libDir -u 
-$cp cp $bai $libDir -u 
-$samtools view -b $libDir/$sampleId.bam $region > $libDir/$sampleId.$region.bam 
-$samtools index $libDir/$sampleId.$region.bam
-rm $libDir/$sampleId.bam $libDir/$sampleId.bai
+$samtools index $libDir/$sampleId.bam
 SS
-	$select_bam_lst .= "$libDir/$sampleId.$region.bam\n";
+	foreach my $key (sort {$a<=>$b} keys %rg) {
+		$sample_shell .= "$samtools view -b $libDir/$sampleId.bam $rg{$key} > $libDir/$sampleId.$rg{$key}.bam\n";
+		$sample_shell .= "$samtools index $libDir/$sampleId.$rg{$key}.bam\n";
+		$select_bam_lst{$key} .= "$libDir/$sampleId.$rg{$key}.bam\n";
+	}		
+	$sample_shell .= "rm $libDir/$sampleId.bam*\n";
 	write_shell($sample_shell, "$libDir/$sampleId.select.sh");
 	$batch_select_shell .= "sh $libDir/$sampleId.select.sh >$libDir/$sampleId.select.sh.o 2>$libDir/$sampleId.select.sh.e\n";
 }
@@ -124,14 +146,17 @@ close LIST;
 
 parallel_shell($batch_select_shell, "$projectDir/select.sh", $thread, 1);
 
-open NB, ">$projectDir/call_bam.lst" or die $!;
-print NB $select_bam_lst;
-close NB;
+foreach my $key (sort {$a<=>$b} keys %select_bam_lst) {
+	open NB, ">$projectDir/call_bam.$key.lst" or die $!;
+	print NB $select_bam_lst{$key};
+	close NB;
+}
 
 # Region SNP call
-my $call_shell=<<CS;
-$call basetype --input $projectDir/call_bam.lst --output $workDir/nipt.$region --reference $ref --region $region --mapq 30 --thread $thread --batch 10 --rerun
-CS
+my $call_shell = "";
+foreach my $key (sort {$a<=>$b} keys %rg) {
+	$call_shell .= "$call basetype --input $projectDir/call_bam.$key.lst --output $workDir/nipt.$rg{$key} --reference $ref --region $rg{$key} --mapq 30 --thread $thread --batch 10 --rerun\n";
+}
 write_shell($call_shell, "$projectDir/call.sh");
 
 $main_shell = "# Run region_call pipeline for all samples\n";
