@@ -142,15 +142,15 @@ SS
 		$sample_shell .= "$samtools index $libDir/$sampleId.$rg{$key}.bam\n";
 		$select_bam_lst{$key} .= "$libDir/$sampleId.$rg{$key}.bam\n";
 	}		
-	$sample_shell .= "$gtz --ref $ref --donot-pack-ref -o $libDir/$sampleId.bam.gtz -e $libDir/$sampleId.bam\n";
-	$sample_shell .= "$cp cp $libDir/$sampleId.bam.gtz $ossDir/ -u\n";
+	#$sample_shell .= "$gtz --ref $ref --donot-pack-ref -o $libDir/$sampleId.bam.gtz -e $libDir/$sampleId.bam\n";
+	#$sample_shell .= "$cp cp $libDir/$sampleId.bam.gtz $ossDir/ -u\n";
 	$sample_shell .= "rm $libDir/$sampleId.bam*\n";
 	write_shell($sample_shell, "$libDir/$sampleId.select.sh");
 	$batch_select_shell .= "sh $libDir/$sampleId.select.sh >$libDir/$sampleId.select.sh.o 2>$libDir/$sampleId.select.sh.e\n";
 }
 close LIST;
 
-parallel_shell($batch_select_shell, "$projectDir/select.sh", $thread, 2);
+parallel_shell($batch_select_shell, "$projectDir/select.sh", $thread, 1);
 
 foreach my $key (sort {$a<=>$b} keys %select_bam_lst) {
 	open NB, ">$projectDir/call_bam.$key.lst" or die $!;
