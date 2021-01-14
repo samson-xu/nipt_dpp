@@ -160,8 +160,9 @@ if ($step =~ /t/) {
 			chomp;
 			my @arr = split /\s+/;
 			next if ($arr[0] =~ m/$sample_match_filter/);
-			@{$sampleInfo{$spre$arr[0]}{'fastq'}} = ($arr[1]) if (@arr == 2);
-			@{$sampleInfo{$spre$arr[0]}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);
+			my $sid = "$spre$arr[0]";
+			@{$sampleInfo{$sid}{'fastq'}} = ($arr[1]) if (@arr == 2);
+			@{$sampleInfo{$sid}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);
 		}
 		close FQ;
 	} elsif ($input =~ m/ubam.lst/) {
@@ -174,7 +175,8 @@ if ($step =~ /t/) {
 			my @arr = split /\s+/;
 			next if ($arr[0] =~ m/$sample_match_filter/);
 			$bam2fastq_shell .= "$config->{'samtools'} fastq --threads 4 -0 $projectDir/fastq/$arr[0].1.fq.gz $arr[1]\n";
-			@{$sampleInfo{$spre$arr[0]}{'fastq'}} = ("$projectDir/fastq/$arr[0].1.fq.gz");
+			my $sid = "$spre$arr[0]";
+			@{$sampleInfo{$sid}{'fastq'}} = ("$projectDir/fastq/$arr[0].1.fq.gz");
 		}
 		close UBAM;
 		parallel_shell($bam2fastq_shell, "$projectDir/bam2fastq.sh", $thread, 4);
@@ -208,7 +210,8 @@ BCL
 				chomp;
 				my @arr = split ",";
 				next if ($arr[1] =~ m/$sample_match_filter/);
-				@{$sampleInfo{$spre$arr[1]}{'fastq'}} = ("$projectDir/fastq/$run_dir/$arr[1]*R1*gz", "$projectDir/fastq/$run_dir/$arr[1]*R2*gz");
+				my $sid = "$spre$arr[1]";
+				@{$sampleInfo{$sid}{'fastq'}} = ("$projectDir/fastq/$run_dir/$arr[1]*R1*gz", "$projectDir/fastq/$run_dir/$arr[1]*R2*gz");
 			}
 		}
 		close SS;
