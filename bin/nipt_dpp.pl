@@ -28,6 +28,7 @@ my $project = strftime("%Y%m%d-%H%M%S",localtime());
 my $workDir = $ENV{'PWD'};
 my $prefix = "";
 my $sample_match_filter = "";
+my $spre = "";
 my $platform = "ILLUMINA";
 my $ref = $config->{'hg19'};
 my $step = 'tcfb';
@@ -69,6 +70,7 @@ $indent --project <str>               Project name, default "$project"
 $indent --workDir <str>               Work directory, default "$workDir"
 $indent --prefix <str>                Prefix for this run, default "$prefix"
 $indent --smf <str>                   Sample id match this string will be filtered, default "$sample_match_filter"
+$indent --spre <str>                  Add prefix for every sample, default "$spre"
 $indent --platform <str>              Platform/technology used to produce the read, such as ILLUMINA, SOLID, IONTORRENT, HELICOS and PACBIO, default "$platform"
 $indent --ref <str>                   Reference genome absolute path, default "$ref"
 $indent --step <str>                  Set step for run, default "$step"
@@ -111,6 +113,7 @@ GetOptions(
 	"workDir=s" => \$workDir,
 	"prefix=s" => \$prefix,
 	"smf=s" => \$sample_match_filter,
+	"spre=s" => \$spre,
 	"platform=s" => \$platform,
 	"ref=s" => \$ref,
 	"step=s" => \$step,
@@ -138,7 +141,7 @@ if (@ARGV == 0) {
 die $guide if (@ARGV == 0 || defined $help);
 
 # Main
-$project = ".$project" if ($project !~ m/^\./);
+#$project = ".$project" if ($project !~ m/^\./);
 my $projectDir = "$workDir/$project";
 my $input = shift;
 unless (-e $input) {
@@ -157,8 +160,8 @@ if ($step =~ /t/) {
 			chomp;
 			my @arr = split /\s+/;
 			next if ($arr[0] =~ m/$sample_match_filter/);
-			@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1]) if (@arr == 2);
-			@{$sampleInfo{$arr[0]}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);
+			@{$sampleInfo{$spre$arr[0]}{'fastq'}} = ($arr[1]) if (@arr == 2);
+			@{$sampleInfo{$spre$arr[0]}{'fastq'}} = ($arr[1], $arr[2]) if (@arr == 3);
 		}
 		close FQ;
 	} elsif ($input =~ m/ubam.lst/) {
@@ -171,7 +174,7 @@ if ($step =~ /t/) {
 			my @arr = split /\s+/;
 			next if ($arr[0] =~ m/$sample_match_filter/);
 			$bam2fastq_shell .= "$config->{'samtools'} fastq --threads 4 -0 $projectDir/fastq/$arr[0].1.fq.gz $arr[1]\n";
-			@{$sampleInfo{$arr[0]}{'fastq'}} = ("$projectDir/fastq/$arr[0].1.fq.gz");
+			@{$sampleInfo{$spre$arr[0]}{'fastq'}} = ("$projectDir/fastq/$arr[0].1.fq.gz");
 		}
 		close UBAM;
 		parallel_shell($bam2fastq_shell, "$projectDir/bam2fastq.sh", $thread, 4);
@@ -205,7 +208,7 @@ BCL
 				chomp;
 				my @arr = split ",";
 				next if ($arr[1] =~ m/$sample_match_filter/);
-				@{$sampleInfo{$arr[1]}{'fastq'}} = ("$projectDir/fastq/$run_dir/$arr[1]*R1*gz", "$projectDir/fastq/$run_dir/$arr[1]*R2*gz");
+				@{$sampleInfo{$spre$arr[1]}{'fastq'}} = ("$projectDir/fastq/$run_dir/$arr[1]*R1*gz", "$projectDir/fastq/$run_dir/$arr[1]*R2*gz");
 			}
 		}
 		close SS;
