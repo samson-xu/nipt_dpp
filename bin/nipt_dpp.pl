@@ -30,7 +30,12 @@ my $prefix = "";
 my $sample_match_filter = "";
 my $spre = "";
 my $platform = "ILLUMINA";
-my $ref = $config->{'hg19'};
+my $ref;
+if ($config->{'hg19'}) {
+	$ref =  $config->{'hg19'};	
+} else {
+	$ref = "";
+}
 my $step = 'tcfb';
 my $thread = 36;
 my $run = 'no';
@@ -285,18 +290,6 @@ parallel_shell($batch_align_shell, "$projectDir/align.sh", $thread, $align_threa
 $main_shell .= "sh $projectDir/fastq.deal.sh >$projectDir/fastq.deal.sh.o 2>$projectDir/fastq.deal.sh.e\n" if ($step =~ /c/ or $step =~ /f/);
 $main_shell .= "sh $projectDir/align.sh >$projectDir/align.sh.o 2>$projectDir/align.sh.e\n" if ($step =~ /b/);
 
-#foreach my $sampleId (sort {$a cmp $b} keys %sampleInfo) {
-#	# SNP/InDel detection
-#	if ($step =~ /v/) {
-#	}
-#}
-#
-#if ($step =~ /c|f|b|v/) {
-#	foreach my $sampleId (sort {$a cmp $b} keys %sampleInfo) {
-#		write_shell($sample_shell{$sampleId}, "$projectDir/$sampleId/$sampleId.sh");
-#		$main_shell .= "sh $projectDir/$sampleId/$sampleId.sh >$projectDir/$sampleId/$sampleId.sh.o 2>$projectDir/$sampleId/$sampleId.sh.e\n";
-#	}
-#}
 if ($step =~ /f/ and $step =~ /b/) {
 	$main_shell.=<<MV;
 mkdir -p $workDir/${prefix}Result 
