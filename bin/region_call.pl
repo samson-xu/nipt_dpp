@@ -89,7 +89,7 @@ GetOptions(
 die $guide if (@ARGV == 0 || defined $help);
 
 # Main
-$project = ".$project" if ($project !~ m/^\./);
+#$project = ".$project" if ($project !~ m/^\./);
 my $projectDir = "$workDir/$project";
 my $input = shift;
 unless (-e $input) {
