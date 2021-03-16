@@ -104,7 +104,7 @@ $time = strftime("%Y/%m/%d %H:%M:%S",localtime());
 print "\n\nStart Bam Split at $time!\n\n";
 my $projectDir = "$workDir/$project";
 system("mkdir -p $projectDir/") == 0 || die $!;
-system("mkdir -p $projectDir/log/") == 0 || die $!;
+system("mkdir -p $projectDir/log/") == 0 || die $! if (defined $check);
 foreach my $input (@ARGV) {
 	my $file = "";
 	if ($input =~ /gtz$/) {
@@ -123,8 +123,8 @@ foreach my $input (@ARGV) {
 			$pm->finish;
 	}
 	$pm->wait_all_children;
+	system("rm -rf $workDir/*bam $workDir/*bai") == 0 || die $! if (defined $rm);
 }
-system("rm -rf $workDir/bam.lst $workDir/*bam $workDir/*bai") == 0 || die $! if (defined $rm);
 $time = strftime("%Y/%m/%d %H:%M:%S",localtime());
 print "\n\nEnd Bam Split at $time!\n\n";
 
