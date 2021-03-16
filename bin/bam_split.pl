@@ -123,7 +123,7 @@ foreach my $input (@ARGV) {
 			$pm->finish;
 	}
 	$pm->wait_all_children;
-	system("rm -rf $workDir/*bam $workDir/*bai") == 0 || die $! if (defined $rm);
+	system("rm -rf $workDir/*.bam $workDir/*.bai") == 0 || die $! if (defined $rm);
 }
 $time = strftime("%Y/%m/%d %H:%M:%S",localtime());
 print "\n\nEnd Bam Split at $time!\n\n";
