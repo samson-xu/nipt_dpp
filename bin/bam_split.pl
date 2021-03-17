@@ -108,10 +108,10 @@ system("mkdir -p $projectDir/log/") == 0 || die $! if (defined $check);
 foreach my $input (@ARGV) {
 	my $file = "";
 	if ($input =~ /gtz$/) {
-		system("$gtz -d -f --ref $ref -O $workDir $input") == 0 || die $!;
+		system("$gtz -d -f --ref $ref -O $workDir -p $thread $input") == 0 || die $!;
 		$file = basename $input; 
 		$file =~ s/.gtz//;
-		system("$samtools index $workDir/$file") == 0 || die $!;
+		system("$samtools index -@ $thread $workDir/$file") == 0 || die $!;
 	} else {
 		print STDERR "$input input format error! Plesse check it!\n";
 		exit;
