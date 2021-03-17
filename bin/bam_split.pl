@@ -107,10 +107,13 @@ system("mkdir -p $projectDir/") == 0 || die $!;
 system("mkdir -p $projectDir/log/") == 0 || die $! if (defined $check);
 foreach my $input (@ARGV) {
 	my $file = "";
+	my $lib = "";
 	if ($input =~ /gtz$/) {
 		system("$gtz -d -f --ref $ref -O $workDir -p $thread $input") == 0 || die $!;
-		$file = basename $input; 
+		my @arr = split /\//, $input;
+		$file = $arr[-1]; 
 		$file =~ s/.gtz//;
+		$lib = $arr[-3];
 		system("$samtools index -@ $thread $workDir/$file") == 0 || die $!;
 	} else {
 		print STDERR "$input input format error! Plesse check it!\n";
@@ -119,7 +122,7 @@ foreach my $input (@ARGV) {
 	my $pm = new Parallel::ForkManager($thread);
 	foreach my $part (@regions) {
 			$pm->start and next;
-			bsplit("$workDir/$file", $part, $samtools);
+			bsplit("$workDir/$file", $lib, $part, $samtools);
 			$pm->finish;
 	}
 	$pm->wait_all_children;
@@ -130,12 +133,12 @@ print "\n\nEnd Bam Split at $time!\n\n";
 
 sub bsplit {
 	my $bam = shift;
+	my $lib = shift;
 	my $rg = shift;
 	my $samtools = shift;
 	my @arr = split /\//, $bam;
 	my $pre = $arr[-1];
 	$pre =~ s/.bam//;
-	my $lib = $arr[-3];	
 	system("mkdir -p $projectDir/$rg/$lib/") == 0 || die $!;
 	system("$samtools view -b $bam $rg > $projectDir/$rg/$lib/$pre.$rg.bam") == 0 || die $!;
 	system("$samtools index $projectDir/$rg/$lib/$pre.$rg.bam") == 0 || die $!;
