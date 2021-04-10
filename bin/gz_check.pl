@@ -21,6 +21,7 @@ my $help;
 my $project = strftime("%Y%m%d-%H%M%S",localtime());
 my $workDir = $ENV{'PWD'};
 my $thread = 16;
+my $out_pre = "";
 
 # Guide
 my $guide_separator = "=" x 150;
@@ -47,12 +48,13 @@ $indent --help                        Print this guide information
 $indent --project <str>               Project name, default "$project"
 $indent --workDir <str>               Work directory, default "$workDir"
 $indent --thread <i>                  Set the number of threads for the program to run, default "$thread"
+$indent --out_pre <str>               Output prefix, default "$out_pre"
 
 NOTE
 $indent 1. Input file must be cvg or vcf gz file.
 
 EXAMPLE
-$indent Example1: $0 --project result --workDir /path/for/workDir --thread 16 *gz 
+$indent Example1: $0 --project result --workDir /path/for/workDir --thread 16 --out_pre chrX *gz 
 $guide_separator
 
 INFO
@@ -63,6 +65,7 @@ GetOptions(
 	"project=s" => \$project,
 	"workDir=s" => \$workDir,
 	"thread=i" => \$thread,
+	"out_pre=s" => \$out_pre,
 );
 
 die $guide if (@ARGV == 0 || defined $help);
@@ -76,7 +79,7 @@ print "\n\nStart GZ check at $time!\n\n";
 my $projectDir = "$workDir/$project";
 system("mkdir -p $projectDir/") == 0 || die $!;
 system("mkdir -p $workDir/run/") == 0 || die $!;
-system("> $projectDir/gz.check.txt") == 0 || die $!;
+system("> $projectDir/$out_pre.gz.check.txt") == 0 || die $!;
 my $pm = new Parallel::ForkManager($thread);
 foreach my $input (@ARGV) {
 		$pm->start and next;
@@ -97,6 +100,6 @@ sub GZcheck {
 	chomp($md5);
 	my $stat = `zgrep -v '^#' $file | awk '{print NF}' | uniq -c | awk '{print \$2,\$1}'`;
 	chomp($stat);
-	system("echo $pre $md5 $stat >> $projectDir/gz.check.txt") == 0 || die $!;
+	system("echo $pre $md5 $stat >> $projectDir/$out_pre.gz.check.txt") == 0 || die $!;
 	system("rm -rf $workDir/run/$pre*") == 0 || die $!;
 }

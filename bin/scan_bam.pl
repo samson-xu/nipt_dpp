@@ -103,6 +103,7 @@ system("> $projectDir/log/$region.err") == 0 || die $!;
 my $count = 0;
 my $pm = new Parallel::ForkManager($thread);
 foreach my $file (@bam_list) {
+		$count++;
 		$pm->start and next;
 		scan($file);
 		$pm->finish;
@@ -118,12 +119,11 @@ sub scan {
 	my $lib = $arr[-2];
 	my $rg = $arr[-3];
 	my $pre = $arr[-1];
-	$count++;
 	$pre =~ s/.bam//;
 	#split bam check
 	system("echo $bam > $workDir/run/$pre.bam.lst ") == 0 || die $!;
 	system("echo $pre $count >> $projectDir/log/$rg.log") == 0 || die $!;
-	my $exitcode = system("$call basetype --input $workDir/run/$pre.bam.lst --output $workDir/run/$pre --reference $ref --region $rg --mapq 30 --thread 1 --batch 1 --rerun");
+	my $exitcode = system("$call basetype --input $workDir/run/$pre.bam.lst --output $workDir/run/$pre --reference $ref --region $rg --mapq 30 --thread 1 --batch 1 --load");
 	system("rm -rf $workDir/run/$pre*") == 0 || die $!;
 	$exitcode = $exitcode >> 8;
 	if ($exitcode != 0) {
