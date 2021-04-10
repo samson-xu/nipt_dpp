@@ -123,8 +123,8 @@ sub scan {
 	#split bam check
 	system("echo $bam > $workDir/run/$pre.bam.lst ") == 0 || die $!;
 	system("echo $pre $count >> $projectDir/log/$rg.log") == 0 || die $!;
-	my $exitcode = system("$call basetype --input $workDir/run/$pre.bam.lst --output $workDir/run/$pre --reference $ref --region $rg --mapq 30 --thread 1 --batch 1 --load");
-	system("rm -rf $workDir/run/$pre*") == 0 || die $!;
+	my $exitcode = system("echo 'SID:'$pre && $call basetype --input $workDir/run/$pre.bam.lst --output $workDir/run/$pre --reference $ref --region $rg --mapq 30 --thread 1 --batch 1 --load");
+	system("rm -rf $workDir/run/$pre*");
 	$exitcode = $exitcode >> 8;
 	if ($exitcode != 0) {
 		system("mkdir -p $projectDir/$rg/$lib/") == 0 || die $!;
